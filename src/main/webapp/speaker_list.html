@@ -1,0 +1,246 @@
+<table class="layui-hide" id="test" lay-filter="test"></table>
+
+<script type="text/html" id="toolbarDemo">
+    <div class="layui-btn-container">
+        <button class="layui-btn layui-btn-sm" lay-event="getCheckData">多选删除</button>
+        <button class="layui-btn layui-btn-sm" lay-event="getCheckLength">获取选中数目</button>
+        <button class="layui-btn layui-btn-sm" lay-event="isAll">验证是否全选</button>
+        <button class="layui-btn layui-btn-sm" lay-event="addSpeaker">添加</button>
+    </div>
+</script>
+
+<script type="text/html" id="barDemo">
+    <a class="layui-btn layui-btn-xs" lay-event="edit">编辑</a>
+    <a class="layui-btn layui-btn-danger layui-btn-xs" lay-event="del">删除</a>
+</script>
+
+
+<script>
+    layui.use('table', function(){
+        var table = layui.table;
+
+        table.render({
+            elem: '#test'
+            ,url:'speaker/findSpeakers'
+            ,toolbar: '#toolbarDemo' //开启头部工具栏，并为其绑定左侧模板
+            ,defaultToolbar: ['filter', 'exports', 'print', { //自定义头部工具栏右侧图标。如无需自定义，去除该参数即可
+                title: '提示'
+                ,layEvent: 'LAYTABLE_TIPS'
+                ,icon: 'layui-icon-tips'
+            }]
+            ,title: '用户数据表'
+            ,cols: [[
+                {type: 'checkbox', fixed: 'left'}
+                ,{field:'id', title:'id', sort: true}
+                ,{field:'speakerName', title:'名称'}
+                ,{field:'speakerJob', title:'职位'}
+                ,{field:'speakerDesc', title:'简介'}
+                ,{fixed: 'right', title:'操作', toolbar: '#barDemo', width:150}
+            ]]
+            ,page: true
+        });
+
+        //头工具栏事件
+        table.on('toolbar(test)', function(obj){
+            var checkStatus = table.checkStatus(obj.config.id);
+            switch(obj.event){
+                case 'getCheckData':
+                    var data = checkStatus.data;
+                    // layer.alert(JSON.stringify(data));
+                    var params=""
+                    for(i in data){
+                        params+="&ids="+data[i].id
+                    }
+
+                    $.post(
+                        "speaker/deleteByIds",
+                        params,
+                        function (){
+                            table.reload("test",{});
+                        }
+
+                    );
+                    break;
+                case 'getCheckLength':
+                    var data = checkStatus.data;
+                    layer.msg('选中了：'+ data.length + ' 个');
+                    break;
+                case 'isAll':
+                    layer.msg(checkStatus.isAll ? '全选': '未全选');
+                    break;
+
+                case 'addSpeaker':
+                    addSpeaker()
+                    break;
+
+                //自定义头工具栏右侧图标 - 提示
+                case 'LAYTABLE_TIPS':
+                    layer.alert('这是工具栏右侧自定义的一个图标按钮');
+                    break;
+            };
+        });
+
+        //监听行工具事件
+        table.on('tool(test)', function(obj){
+            var data = obj.data;
+            //console.log(obj)
+            if(obj.event === 'del'){
+                layer.confirm('真的删除行么', function(index){
+                    obj.del();
+                    // alert(data.music_id)
+                    $.get(
+                        "speaker/deleteById?id="+data.id,
+                        function () {
+                            table.reload("test",{})
+                        }
+                    );
+
+                    layer.close(index);
+
+                });
+            } else if(obj.event === 'edit'){
+                showSpeaker(data);
+            }
+        });
+    });
+</script>
+<script>
+    function addSpeaker() {
+        layer.open({
+            type: 1,
+            content: $('#addSpeaker').html(),
+            title: '添加视频',
+            skin: 'layui-layer-molv',
+            anim: 3,
+            area: ['600px', '600px'],
+            btn: ['提交', '取消'], //可以写多个按钮
+            success: function () {//弹出层打开后的回调函数,数据回显
+
+
+            },
+            yes: function (index, layero) {
+                var data = $("#music-edit-form").serialize();
+                $.ajax({
+                    url: 'speaker/addSpeaker',
+                    data: data,
+                    type: 'POST',
+                    // processData : false,
+                    // contentType : false,
+                    // dataType : "json",
+                    success: function () {
+                        window.location.reload();//重新加载
+                    }
+                })
+            }
+        })
+    }
+</script>
+
+<script type="text/html" id="addSpeaker">
+    <form id="music-edit-form" method="post" style="width: 80%" class="layui-form" lay-filter="music-edit-form" enctype="multipart/form-data">
+        <div class="layui-form-item">
+            <label class="layui-form-label">讲师姓名</label>
+            <div class="layui-input-block">
+                <input id="speakerName" type="text" name="speakerName" required lay-verify="required"
+                       autocomplete="off"
+                       class="layui-input">
+            </div>
+        </div>
+
+        <div class="layui-form-item">
+            <label class="layui-form-label">讲师介绍</label>
+            <div class="layui-input-block">
+                <input id="speakerDesc" type="text" name="speakerDesc" required lay-verify="required"
+                       autocomplete="off"
+                       class="layui-input">
+            </div>
+        </div>
+        <div class="layui-form-item">
+            <label class="layui-form-label">职称</label>
+            <div class="layui-input-block">
+                <input id="speakerJob" type="text" name="speakerJob" required lay-verify="required"
+                       autocomplete="off"
+                       class="layui-input">
+            </div>
+        </div>
+
+        <div class="layui-form-item">
+            <label class="layui-form-label">头像url</label>
+            <div class="layui-input-block">
+                <input type="text" name="headImgUrl" required lay-verify="required"
+                       autocomplete="off"
+                       class="layui-input">
+            </div>
+        </div>
+    </form>
+</script>
+
+<script>
+    function showSpeaker(data) {
+        layer.open({
+            type: 1,
+            content: $('#updateSpeaker').html(),
+            title: '编辑信息',
+            skin: 'layui-layer-molv',
+            anim: 3,
+            area: ['600px', '600px'],
+            btn: ['提交', '取消'], //可以写多个按钮
+            success: function () {//弹出层打开后的回调函数,数据回显
+                $("#e_id").val(data.id);
+                $("#e_speakerName").val(data.speakerName);
+                $("#e_speakerDesc").val(data.speakerDesc);
+                $("#e_speakerJob").val(data.speakerJob);
+                $("#e_headImgUrl").val(data.headImgUrl);
+                layui.form.render();
+            },
+            yes: function (index, layero) {
+                var data = $("#speaker-edit-form").serialize();
+                $.ajax({
+                    url: 'speaker/editSpeaker',
+                    data: data,
+                    type: 'POST',
+                    // processData : false,
+                    // contentType : false,
+                    // dataType : "json",
+                    success: function () {
+                        window.location.reload();//重新加载
+                    }
+                })
+            }
+        })
+    }
+</script>
+
+<script type="text/html" id="updateSpeaker">
+    <form id="speaker-edit-form" method="post" style="width: 80%" class="layui-form" lay-filter="music-edit-form" enctype="multipart/form-data">
+        <input type="hidden" name="id" id="e_id">
+
+        <div class="layui-form-item">
+            <label class="layui-form-label">讲师姓名</label>
+            <div class="layui-input-block">
+                <input id="e_speakerName" type="text" name="speakerName" required lay-verify="required"
+                       autocomplete="off"
+                       class="layui-input">
+            </div>
+        </div>
+
+        <div class="layui-form-item">
+            <label class="layui-form-label">讲师介绍</label>
+            <div class="layui-input-block">
+                <input id="e_speakerDesc" type="text" name="speakerDesc" required lay-verify="required"
+                       autocomplete="off"
+                       class="layui-input">
+            </div>
+        </div>
+        <div class="layui-form-item">
+            <label class="layui-form-label">职称</label>
+            <div class="layui-input-block">
+                <input id="e_speakerJob" type="text" name="speakerJob" required lay-verify="required"
+                       autocomplete="off"
+                       class="layui-input">
+            </div>
+        </div>
+
+    </form>
+</script>
+

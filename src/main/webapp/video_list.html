@@ -1,0 +1,457 @@
+<form id="query" method="post" action="video/fuzzyVideo">
+    <div class="layui-input-block" style="margin-left: 0px">
+        <div class="layui-input-inline">
+            <input type="text" id="condition" value="" name="title" placeholder="请输入查询条件" autocomplete="off" class="layui-input">
+        </div>
+        <div class="layui-input-inline">
+            <select name="speakerId" lay-verify="" id="speakers" >
+                <!--                    <option value="">请选择讲师</option>-->
+            </select>
+        </div>
+        <div class="layui-input-inline">
+            <select name="courseId" lay-verify="" id="courses">
+                <!--                    <option value="">请选择课程</option>-->
+            </select>
+        </div>
+        <!--<button class="layui-btn layui-btn-sm" lay-event="searchContent" id="conditionSearch">查询</button>-->
+        <button class="layui-btn" data-type="reload" id="conditionSearch" lay-submit lay-filter="sort11">搜索</button>
+    </div>
+</form>
+<table class="layui-hide" id="test" lay-filter="test"></table>
+
+<script type="text/html" id="toolbarDemo">
+    <div class="layui-btn-container">
+        <button class="layui-btn layui-btn-sm" lay-event="getCheckData">多选删除</button>
+<!--        <button class="layui-btn layui-btn-sm" lay-event="getCheckLength">获取选中数目</button>-->
+<!--        <button class="layui-btn layui-btn-sm" lay-event="isAll">验证是否全选</button>-->
+        <button class="layui-btn layui-btn-sm" lay-event="addVideo">添加</button>
+
+    </div>
+
+</script>
+
+
+
+<script type="text/html" id="barDemo">
+    <a class="layui-btn layui-btn-xs" lay-event="edit">编辑</a>
+    <a class="layui-btn layui-btn-danger layui-btn-xs" lay-event="del">删除</a>
+</script>
+
+<!--<script>-->
+<!--    $(function () {-->
+<!--        $.get(-->
+<!--            "sheet/findSheets",-->
+<!--            function(data){-->
+
+<!--            }-->
+<!--        )-->
+<!--        }-->
+<!--    );-->
+<!--</script>-->
+
+<script>
+    layui.use('table', function(){
+        var table = layui.table;
+
+        table.render({
+            elem: '#test'
+            ,url:'video/findVideos'
+            ,toolbar: '#toolbarDemo' //开启头部工具栏，并为其绑定左侧模板
+            ,defaultToolbar: ['filter', 'exports', 'print', { //自定义头部工具栏右侧图标。如无需自定义，去除该参数即可
+                title: '提示'
+                ,layEvent: 'LAYTABLE_TIPS'
+                ,icon: 'layui-icon-tips'
+            }]
+            ,title: '用户数据表'
+            ,cols: [[
+                {type: 'checkbox', fixed: 'left'}
+                ,{field:'id', title:'id', sort: true}
+                ,{field:'title', title:'名称'}
+                ,{field:'detail', title:'介绍'}
+                ,{field:'speaker_name', title:'讲师'}
+                ,{field:'time', title:'时长'}
+                ,{field:'play_num', title:'播放次数'}
+                ,{fixed: 'right', title:'操作', toolbar: '#barDemo', width:150}
+            ]]
+            ,page: true,
+            id:'testReload'
+        });
+
+        //头工具栏事件
+        table.on('toolbar(test)', function(obj){
+            var checkStatus = table.checkStatus(obj.config.id);
+            switch(obj.event){
+                case 'getCheckData':
+                    var data = checkStatus.data;
+                    // layer.alert(JSON.stringify(data));
+                    var params=""
+                    for(i in data){
+                        params+="&ids="+data[i].id
+                    }
+                    alert(params);
+                    $.post(
+                        "video/deleteByIds",
+                        params,
+                        function (){
+                            table.reload("test",{});
+                        }
+
+                    );
+                    break;
+                case 'getCheckLength':
+                    var data = checkStatus.data;
+                    layer.msg('选中了：'+ data.length + ' 个');
+                    break;
+                case 'isAll':
+                    layer.msg(checkStatus.isAll ? '全选': '未全选');
+                    break;
+
+                case 'addVideo':
+                    addVideo()
+                    break;
+
+                //自定义头工具栏右侧图标 - 提示
+                case 'LAYTABLE_TIPS':
+                    layer.alert('这是工具栏右侧自定义的一个图标按钮');
+                    break;
+            };
+        });
+
+
+
+        //监听行工具事件
+        table.on('tool(test)', function(obj){
+            var data = obj.data;
+            //console.log(obj)
+            if(obj.event === 'del'){
+                layer.confirm('真的删除行么', function(index){
+                    obj.del();
+                    // alert(data.music_id)
+                    $.get(
+                        "video/deleteById?id="+data.id,
+                        function () {
+                            table.reload("test",{})
+                        }
+                    );
+
+                    layer.close(index);
+
+                });
+            } else if(obj.event === 'edit'){
+                showVideo(data);
+            }
+        });
+
+        //模糊查询
+        $('#conditionSearch').click(function () {
+
+            var sort = $("#query").serialize();
+            console.log(sort)
+            //执行重载
+            console.log()
+            table.reload('testReload', {
+
+                page: {
+                    curr: 1 //重新从第 1 页开始
+                }
+                ,methods:"post"
+                ,url:'video/fuzzyVideo?'+sort
+                ,request: {
+                    page: 1
+                    ,limit:10
+                }
+                ,where: {
+                    //archiveSort:sort
+                }
+            });
+            return false;
+        });
+
+    });
+
+
+
+</script>
+
+
+<script>
+    function addVideo() {
+        layer.open({
+            type: 1,
+            content: $('#addVideo').html(),
+            title: '添加视频',
+            skin: 'layui-layer-molv',
+            anim: 3,
+            area: ['600px', '600px'],
+            btn: ['提交', '取消'], //可以写多个按钮
+            success: function () {//弹出层打开后的回调函数,数据回显
+                for (var i = 0; i < speakers.length; i++) {
+                    $("#speaker_name").append('<option value="' + speakers[i].id + '">' + speakers[i].speakerName + '</option>');
+                }
+
+                for (var i = 0; i < courses.length; i++) {
+                    $("#courseName").append('<option value="' + courses[i].id + '">' + courses[i].courseTitle + '</option>');
+                }
+                layui.form.render();//后追加到页面的元素，layui不渲染，必须render
+            },
+            yes: function (index, layero) {
+                $.ajax({
+                    url: 'video/addVideo',
+                    data: $("#video-add-form").serialize(),
+                    type: 'POST',
+                    success: function () {
+                        layer.close(index);
+                        table.reload("test",{})
+
+                        // window.location.reload();//重新加载
+                    }
+                })
+            }
+        })
+    }
+
+    function showVideo(data) {
+        layer.open({
+            type: 1,
+            content: $('#editVideo').html(),
+            title: '编辑视频',
+            skin: 'layui-layer-molv',
+            anim: 3,
+            area: ['600px', '600px'],
+            btn: ['提交', '取消'], //可以写多个按钮
+            success: function () {//弹出层打开后的回调函数,数据回显
+                $("#e_id").val(data.id);
+                $("#e_title").val(data.title);
+                $("#e_detail").val(data.detail);
+                $("#e_time").val(data.time);
+                $("#e_imageUrl").val(data.image_url);
+                $("#e_videoUrl").val(data.video_url);
+
+                for (var i = 0; i < speakers.length; i++) {
+                    if (speakers[i].id == data.speaker_id) {
+                        $("#e_speaker_name").append('<option selected value="' + speakers[i].id + '">' + speakers[i].speakerName + '</option>');
+                    } else {
+                        $("#e_speaker_name").append('<option value="' + speakers[i].id + '">' + speakers[i].speakerName + '</option>');
+                    }
+                }
+
+                for (var i = 0; i < courses.length; i++) {
+                    if (courses[i].id == data.course_id) {
+                        $("#e_courseName").append('<option selected value="' + courses[i].id + '">' + courses[i].courseTitle + '</option>');
+                    } else {
+                        $("#e_courseName").append('<option value="' + courses[i].id + '">' + courses[i].courseTitle + '</option>');
+                    }
+                }
+                layui.form.render();//后追加到页面的元素，layui不渲染，必须render
+            },
+            yes: function (index, layero) {
+                $.ajax({
+                    url: 'video/editVideo',
+                    data: $("#video-edit-form").serialize(),
+                    type: 'POST',
+                    success: function () {
+                        window.location.reload();//重新加载
+                    }
+                })
+            }
+        })
+    }
+</script>
+
+<script>
+
+    // 获取添加时的课程信息
+    $(function () {
+        $.get(
+            "course/selectCourse",
+            function(data){
+                JSON.stringify(data)
+                courses = data
+            }
+        )
+        }
+
+    );
+
+    $(function () {
+            $.get(
+                "speaker/selectSpeaker",
+                function(data){
+                    JSON.stringify(data)
+                    speakers = data
+                }
+            )
+        }
+
+    );
+
+    $(function () {
+            $.get(
+                "course/selectCourse",
+                function(data){
+                    JSON.stringify(data)
+                    var courses=data
+                    var content="<option value=''>请选择课程</option>"
+                    for( var i in courses) {
+                        content+="<option value="+courses[i].id+">"+courses[i].courseTitle+"</option>"
+                    }
+                    $("#courses").html(content)
+                    layui.form.render();
+                }
+            )
+        }
+
+    );
+
+    $(function () {
+            $.get(
+                "speaker/selectSpeaker",
+                function(data){
+                    JSON.stringify(data)
+                    var speakers = data
+                    var content="<option value=''>请选择讲师</option>"
+                  for(var i in speakers) {
+                      content+="<option value="+speakers[i].id+">"+speakers[i].speakerName+"</option>"
+                  }
+                  $("#speakers").html(content)
+                    layui.form.render();
+                }
+            )
+        }
+
+    );
+
+</script>
+
+<script type="text/html" id="addVideo">
+    <form id="video-add-form" style="width: 80%" enctype="multipart/form-data" class="layui-form" lay-filter="music-edit-form">
+        <input type="hidden" name="id" id="id">
+
+        <div class="layui-form-item">
+            <label class="layui-form-label">视频名称</label>
+            <div class="layui-input-block">
+                <input id="title" type="text" name="title" required lay-verify="required"
+                       autocomplete="off"
+                       class="layui-input">
+            </div>
+        </div>
+
+        <div class="layui-form-item">
+            <label class="layui-form-label">视频介绍</label>
+            <div class="layui-input-block">
+                <input id="detail" type="text" name="detail" required lay-verify="required"
+                       autocomplete="off"
+                       class="layui-input">
+            </div>
+        </div>
+        <div class="layui-form-item">
+            <label class="layui-form-label">时长</label>
+            <div class="layui-input-block">
+                <input id="time" type="text" name="time" required lay-verify="required"
+                       autocomplete="off"
+                       class="layui-input">
+            </div>
+        </div>
+        <div class="layui-form-item">
+            <label class="layui-form-label">讲师姓名</label>
+            <div class="layui-input-inline">
+                <select name="speakerId" id="speaker_name">
+
+                </select>
+            </div>
+        </div>
+        <div class="layui-form-item">
+            <label class="layui-form-label">课程名</label>
+            <div class="layui-input-inline">
+                <select name="courseId" id="courseName">
+
+                </select>
+            </div>
+        </div>
+
+        <div class="layui-form-item">
+            <label class="layui-form-label">视频url</label>
+            <div class="layui-input-block">
+                <input id="videoUrl" type="text" placeholder="视频具体的url" name="videoUrl" required lay-verify="required"
+                       autocomplete="off"
+                       class="layui-input">
+            </div>
+        </div>
+
+        <div class="layui-form-item">
+            <label class="layui-form-label">图片url</label>
+            <div class="layui-input-block">
+                <input id="imageUrl" type="text" name="imageUrl" placeholder="图片具体的url"required lay-verify="required"
+                       autocomplete="off"
+                       class="layui-input">
+            </div>
+        </div>
+    </form>
+</script>
+
+<script type="text/html" id="editVideo">
+    <form id="video-edit-form" style="width: 80%" enctype="multipart/form-data" class="layui-form" lay-filter="music-edit-form">
+        <input type="hidden" name="id" id="e_id">
+
+        <div class="layui-form-item">
+            <label class="layui-form-label">视频名称</label>
+            <div class="layui-input-block">
+                <input id="e_title" type="text" name="title" required lay-verify="required"
+                       autocomplete="off"
+                       class="layui-input">
+            </div>
+        </div>
+
+        <div class="layui-form-item">
+            <label class="layui-form-label">视频介绍</label>
+            <div class="layui-input-block">
+                <input id="e_detail" type="text" name="detail" required lay-verify="required"
+                       autocomplete="off"
+                       class="layui-input">
+            </div>
+        </div>
+        <div class="layui-form-item">
+            <label class="layui-form-label">时长</label>
+            <div class="layui-input-block">
+                <input id="e_time" type="text" name="time" required lay-verify="required"
+                       autocomplete="off"
+                       class="layui-input">
+            </div>
+        </div>
+        <div class="layui-form-item">
+            <label class="layui-form-label">讲师姓名</label>
+            <div class="layui-input-inline">
+                <select name="speakerId" id="e_speaker_name">
+
+                </select>
+            </div>
+        </div>
+        <div class="layui-form-item">
+            <label class="layui-form-label">课程名</label>
+            <div class="layui-input-inline">
+                <select name="courseId" id="e_courseName">
+
+                </select>
+            </div>
+        </div>
+
+        <div class="layui-form-item">
+            <label class="layui-form-label">视频url</label>
+            <div class="layui-input-block">
+                <input id="e_videoUrl" type="text" placeholder="视频具体的url" name="videoUrl" required lay-verify="required"
+                       autocomplete="off"
+                       class="layui-input">
+            </div>
+        </div>
+
+        <div class="layui-form-item">
+            <label class="layui-form-label">图片url</label>
+            <div class="layui-input-block">
+                <input id="e_imageUrl" type="text" name="imageUrl" placeholder="图片具体的url"required lay-verify="required"
+                       autocomplete="off"
+                       class="layui-input">
+            </div>
+        </div>
+    </form>
+</script>
+
