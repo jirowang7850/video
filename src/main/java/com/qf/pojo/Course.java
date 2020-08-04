@@ -4,7 +4,9 @@ import lombok.Data;
 
 import java.io.Serializable;
 import java.util.List;
-
+/*
+*   课程
+*/
 @Data
 public class Course implements Serializable {
     private Integer id;
